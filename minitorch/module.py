@@ -3,6 +3,48 @@ from __future__ import annotations
 from typing import Any, Dict, Optional, Sequence, Tuple
 
 
+def dfs_collect_params(
+    m: Module, params: list[Tuple[str, Parameter]], prefix: str = ""
+) -> None:
+    """
+    Collect all the parameters of this module and its descendents.
+
+    Args:
+        m: The module to collect parameters from.
+        params: The parameters collected *so far*.
+        prefix: The prefix (path) of this module.
+    """
+
+    if not m:
+        return
+
+    _prefix = prefix + "." if prefix else ""
+
+    for mname, module in m._modules.items():
+        dfs_collect_params(module, params, _prefix + mname)
+
+    for pname, param in m._parameters.items():
+        params.append((_prefix + pname, param))
+
+
+def dfs_update_mode(m: Module, training: bool) -> None:
+    """
+    Update the training mode of this module and its descendents.
+
+    Args:
+        m: The module to update training mode.
+        training: The training mode to set.
+    """
+
+    if not m:
+        return
+
+    for _, module in m._modules.items():
+        dfs_update_mode(module, training)
+
+    m.training = training
+
+
 class Module:
     """
     Modules form a tree that store parameters and other
@@ -31,11 +73,11 @@ class Module:
 
     def train(self) -> None:
         "Set the mode of this module and all descendent modules to `train`."
-        raise NotImplementedError("Need to include this file from past assignment.")
+        dfs_update_mode(self, True)
 
     def eval(self) -> None:
         "Set the mode of this module and all descendent modules to `eval`."
-        raise NotImplementedError("Need to include this file from past assignment.")
+        dfs_update_mode(self, False)
 
     def named_parameters(self) -> Sequence[Tuple[str, Parameter]]:
         """
@@ -45,11 +87,13 @@ class Module:
         Returns:
             The name and `Parameter` of each ancestor parameter.
         """
-        raise NotImplementedError("Need to include this file from past assignment.")
+        res: list[Tuple[str, Parameter]] = []
+        dfs_collect_params(self, res)
+        return res
 
     def parameters(self) -> Sequence[Parameter]:
         "Enumerate over all the parameters of this module and its descendents."
-        raise NotImplementedError("Need to include this file from past assignment.")
+        return [p for _, p in self.named_parameters()]
 
     def add_parameter(self, k: str, v: Any) -> Parameter:
         """
@@ -115,9 +159,9 @@ class Module:
 
 class Parameter:
     """
-    A Parameter is a special container stored in a `Module`.
+    A Parameter is a special container stored in a :class:`Module`.
 
-    It is designed to hold a `Variable`, but we allow it to hold
+    It is designed to hold a :class:`Variable`, but we allow it to hold
     any value for testing.
     """
 
